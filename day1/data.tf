@@ -1,6 +1,6 @@
 #--- digitalocean ---
-data digitalocean_ssh_key sshkey {
-	name = "pubkey"
+data "digitalocean_ssh_key" "sshkey" {
+  name = "pubkey"
 }
 
 #--- docker ---
