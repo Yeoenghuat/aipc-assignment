@@ -52,9 +52,6 @@ resource digitalocean_droplet nginx {
 }
 
 resource local_file nginx-conf {
-    depends_on = [
-        docker_container.dov-bear-container
-    ]
     content = templatefile("nginx.conf.tpl", {
         host_ip = data.digitalocean_droplet.docker_host.ipv4_address
         container_ports = docker_container.dov-bear-container[*].ports[0].external
