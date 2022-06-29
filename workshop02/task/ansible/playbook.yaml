@@ -1,0 +1,85 @@
+- name: Provision nginx server
+  hosts: all
+  vars:
+    code_server_version: 3.3.1
+    code_server_pwd: "mypassword"
+  tasks:
+  - name: Print server IP address
+    debug:
+      msg:
+        - "The current IP address is {{ ansible_host }}"
+  - name: Create a directory if it does not exist
+    file:
+      path: /usr/lib/code-server
+      state: directory
+      mode: '0777'
+  - name: Unarchive a file that needs to be downloaded (added in 2.0)
+    unarchive:
+      src: https://github.com/cdr/code-server/releases/download/v3.3.1/code-server-{{ code_server_version }}-linux-amd64.tar.gz
+      dest: /usr/lib/code-server
+      remote_src: yes
+  - name: Create a symbolic link
+    file:
+      src: /usr/lib/code-server/code-server-{{ code_server_version }}-linux-amd64/bin/code-server
+      dest: /usr/bin/code-server
+      state: link
+  - name: Create a directory if it does not exist
+    file:
+      path: /var/lib/code-server
+      state: directory
+      mode: '0755'
+  - name: Template a file to /etc/file.conf
+    template:
+      src: ./template_files/code-server.service.j2
+      dest: /lib/systemd/system/code-server.service
+      owner: root
+      group: root
+      mode: '0755'
+  - name: Update password field
+    replace:
+      path: /lib/systemd/system/code-server.service
+      regexp: "^Environment=PASSWORD=*__SET_THIS__"
+      replace: "Environment=PASSWORD={{ code_server_pwd }}"
+  - name: Make sure a service is running
+    systemd:
+      state: started
+      name: code-server
+  - name: Enable service code-server
+    service:
+      name: code-server
+      enabled: yes
+  - name: Update cache and install nginx
+    apt:
+      update_cache: yes
+      name: nginx
+      state: latest
+  - name: Make sure nginx service unit is running
+    systemd:
+      state: started
+      name:  nginx
+      enabled: yes
+  - name: Template a file to /etc/nginx/sites-available/code-server.conf
+    template:
+      src: ./template_files/code-server.conf.j2
+      dest: /etc/nginx/sites-available/code-server.conf
+      owner: root
+      group: root
+      mode: '0755'
+  - name: Update servername field
+    replace:
+      path: /etc/nginx/sites-available/code-server.conf
+      regexp: "__SET_THIS__;"
+      replace: "code-{{ ansible_host }}.nip.io;"
+  - name: Create a symbolic link
+    file:
+      src: /etc/nginx/sites-available/code-server.conf
+      dest: /etc/nginx/sites-enabled/code-server.conf
+      state: link
+  - name: Make sure a service nginx is restarted
+    systemd:
+      state: restarted
+      name: nginx
+  - name: Make sure a service code-server is restarted
+    systemd:
+      name: code-server
+      state: restarted
