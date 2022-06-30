@@ -1,0 +1,36 @@
+- name: Provision nginx server
+  hosts: all
+  vars:
+  tasks:
+  - name: Print server IP address
+    debug:
+      msg:
+        - "The current IP address is {{ ansible_host }}"
+  - name: Update password field
+    replace:
+      path: /lib/systemd/system/code-server.service
+      regexp: "^Environment=PASSWORD=*__SET_THIS__"
+      replace: "Environment=PASSWORD={{ code_server_pwd }}"
+  - name: Make sure a service is running
+    systemd:
+      state: started
+      name: code-server
+      enabled: yes
+  - name: Make sure nginx service unit is running
+    systemd:
+      state: started
+      name:  nginx
+      enabled: yes
+  - name: Update servername field
+    replace:
+      path: /etc/nginx/sites-available/code-server.conf
+      regexp: "__SET_THIS__;"
+      replace: "code-{{ ansible_host }}.nip.io;"
+  - name: Make sure a service nginx is restarted
+    systemd:
+      state: restarted
+      name: nginx
+  - name: Make sure a service code-server is restarted
+    systemd:
+      name: code-server
+      state: restarted
